@@ -1,0 +1,40 @@
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Layout xmlns="http://soap.sforce.com/2006/04/metadata">
+    <layoutSections>
+        <style>TwoColumnsLeftToRight</style>
+        <section>
+            <label>Account Information</label>
+            <layoutColumns>
+                <layoutItems>
+                    <field>Name</field>
+                </layoutItems>
+                <layoutItems>
+                    <field>Industry</field>
+                </layoutItems>
+            </layoutColumns>
+        </section>
+        <section>
+            <label>Contact Information</label>
+            <layoutColumns>
+                <layoutItems>
+                    <field>Phone</field>
+                </layoutItems>
+                <layoutItems>
+                    <field>Email</field>
+                    <behavior>Readonly</behavior> <!-- Changed behavior to Readonly as per the new code -->
+                </layoutItems>
+            </layoutColumns>
+        </section>
+    </layoutSections>
+    <!-- Fields added by Developers A and B -->
+    <customField>
+        <label>Revenue</label>
+        <field>Revenue__c</field>
+    </customField>
+    <customField>
+        <label>Market Segment</label>
+        <field>Market_Segment__c</field>
+    </customField>
+</Layout>
+```

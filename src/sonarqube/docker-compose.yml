@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  sonarqube:
+    image: sonarqube:latest
+    ports:
+      - "80:9000"
+    networks:
+      - minha-rede
+
+networks:
+  minha-rede:
+
+volumes:
+  sonarqube_db:

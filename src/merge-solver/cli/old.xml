@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Layout xmlns="http://soap.sforce.com/2006/04/metadata">
+    <layoutSections>
+        <style>TwoColumnsLeftToRight</style>
+        <section>
+            <label>Account Information</label>
+            <layoutColumns>
+                <layoutItems>
+                    <field>Name</field>
+                </layoutItems>
+                <layoutItems>
+                    <field>Industry</field>
+                </layoutItems>
+            </layoutColumns>
+        </section>
+        <section>
+            <label>Contact Information</label>
+            <layoutColumns>
+                <layoutItems>
+                    <field>Phone</field>
+                </layoutItems>
+                <layoutItems>
+                    <field>Email</field>
+                    <behavior>Edit</behavior>
+                </layoutItems>
+            </layoutColumns>
+        </section>
+    </layoutSections>
+    <!-- New field added by Developer A -->
+    <customField>
+        <label>Revenue</label>
+        <field>Revenue__c</field>
+    </customField>
+</Layout>
