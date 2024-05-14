@@ -41,12 +41,17 @@ jobs:
         working-directory: ./infra/terraform
 
       - name: Terraform Plan
-        run: |
-          terraform plan -input=false -out=plan.tfout
+        run: terraform plan -input=false -out=plan.tfout -var="db_password=${{ secrets.DB_PASSWORD }}"
         working-directory: ./infra/terraform
 
       - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve plan.tfout
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -input=false -auto-approve plan.tfout
         working-directory: ./infra/terraform
+
+      - name: Deploy Application
+        run: |
+          EC2_INSTANCE_IP=$(terraform output -raw backend_instance_1_id)
+          scp -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} setup.sh ubuntu@$EC2_INSTANCE_IP:/home/ubuntu/
+          ssh -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ubuntu@$EC2_INSTANCE_IP "chmod +x /home/ubuntu/setup.sh && /home/ubuntu/setup.sh"
+          scp -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} deploy.sh ubuntu@$EC2_INSTANCE_IP:/home/ubuntu/
+          ssh -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ubuntu@$EC2_INSTANCE_IP "chmod +x /home/ubuntu/deploy.sh && /home/ubuntu/deploy.sh"

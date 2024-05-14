@@ -22,29 +22,29 @@ resource "aws_route" "internet_access" {
   gateway_id             = aws_internet_gateway.igw.id
 }
 
-resource "aws_subnet" "public_subnet_1" {
+resource "aws_subnet" "public_subnet_1a" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.1.0.0/24"
   availability_zone       = "us-east-1a"
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "public-subnet-1"
+    Name = "public-subnet-1a"
   }
 }
 
-resource "aws_subnet" "public_subnet_2" {
+resource "aws_subnet" "public_subnet_1b" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.1.16.0/24"
   availability_zone       = "us-east-1b"
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "public-subnet-2"
+    Name = "public-subnet-1b"
   }
 }
 
-resource "aws_security_group" "elb_sg" {
+resource "aws_security_group" "elb_security_group" {
   name        = "elb-security-group"
   description = "Security group for the ELB"
   vpc_id      = aws_vpc.main.id
@@ -64,11 +64,11 @@ resource "aws_security_group" "elb_sg" {
   }
 
   tags = {
-    Name = "ELB Security Group"
+    Name = "elb-security-group"
   }
 }
 
-resource "aws_security_group" "backend_sg" {
+resource "aws_security_group" "backend_security_group" {
   name        = "backend-security-group"
   description = "Security group for backend instances"
   vpc_id      = aws_vpc.main.id
@@ -84,7 +84,7 @@ resource "aws_security_group" "backend_sg" {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.elb_sg.id]
+    security_groups = [aws_security_group.elb_security_group.id]
   }
 
   ingress {
@@ -102,12 +102,12 @@ resource "aws_security_group" "backend_sg" {
   }
 
   tags = {
-    Name = "Backend Security Group"
+    Name = "backend-security-group"
   }
 }
 
-resource "aws_security_group" "db_sg" {
-  name        = "db-security-group"
+resource "aws_security_group" "rds_security_group" {
+  name        = "rds-security-group"
   description = "Security group for RDS"
   vpc_id      = aws_vpc.main.id
 
@@ -126,20 +126,24 @@ resource "aws_security_group" "db_sg" {
   }
 
   tags = {
-    Name = "RDS Security Group"
+    Name = "rds-security-group"
   }
 }
 
-resource "aws_db_subnet_group" "main" {
+resource "aws_db_subnet_group" "main_subnet_group" {
   name       = "main-subnet-group"
-  subnet_ids = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
+  subnet_ids = [aws_subnet.public_subnet_1a.id, aws_subnet.public_subnet_1b.id]
 
   tags = {
-    Name = "Main Subnet Group"
+    Name = "main-subnet-group"
+  }
+
+  lifecycle {
+    ignore_changes = [id]
   }
 }
 
-resource "aws_db_instance" "database" {
+resource "aws_db_instance" "main_database" {
   allocated_storage      = 20
   engine                 = "postgres"
   engine_version         = "12.15"
@@ -149,36 +153,36 @@ resource "aws_db_instance" "database" {
   parameter_group_name   = "default.postgres12"
   skip_final_snapshot    = true
   publicly_accessible    = false
-  vpc_security_group_ids = [aws_security_group.db_sg.id]
-  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.rds_security_group.id]
+  db_subnet_group_name   = aws_db_subnet_group.main_subnet_group.name
 
   tags = {
     Name = "main-db"
   }
 }
 
-resource "aws_instance" "backend_1" {
+resource "aws_instance" "backend_instance_1" {
   ami           = var.ami
   instance_type = var.instance_type
-  subnet_id     = aws_subnet.public_subnet_1.id
+  subnet_id     = aws_subnet.public_subnet_1a.id
   tags = {
     Name = "backend-instance-1"
   }
-  vpc_security_group_ids = [aws_security_group.backend_sg.id]
+  vpc_security_group_ids = [aws_security_group.backend_security_group.id]
 }
 
-resource "aws_instance" "backend_2" {
+resource "aws_instance" "backend_instance_2" {
   ami           = var.ami
   instance_type = var.instance_type
-  subnet_id     = aws_subnet.public_subnet_2.id
+  subnet_id     = aws_subnet.public_subnet_1b.id
   tags = {
     Name = "backend-instance-2"
   }
-  vpc_security_group_ids = [aws_security_group.backend_sg.id]
+  vpc_security_group_ids = [aws_security_group.backend_security_group.id]
 }
 
 resource "aws_elb" "web_elb" {
-  name = "terraform-web-elb"
+  name = "web-elb"
 
   listener {
     instance_port     = 80
@@ -187,8 +191,8 @@ resource "aws_elb" "web_elb" {
     lb_protocol       = "HTTP"
   }
 
-  security_groups = [aws_security_group.elb_sg.id]
-  subnets         = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
+  security_groups = [aws_security_group.elb_security_group.id]
+  subnets         = [aws_subnet.public_subnet_1a.id, aws_subnet.public_subnet_1b.id]
 
   health_check {
     target              = "HTTP:80/"
@@ -199,21 +203,25 @@ resource "aws_elb" "web_elb" {
   }
 
   tags = {
-    Name = "WebELB"
+    Name = "web-elb"
+  }
+
+  lifecycle {
+    ignore_changes = [id]
   }
 }
 
-resource "aws_key_pair" "deployer" {
+resource "aws_key_pair" "deployer_key_pair" {
   public_key = var.public_key
 }
 
-resource "aws_launch_configuration" "app" {
-  name_prefix   = "terraform-app-launch-configuration-"
+resource "aws_launch_configuration" "app_launch_configuration" {
+  name_prefix   = "app-launch-configuration-"
   image_id      = var.ami
   instance_type = var.instance_type
-  key_name      = aws_key_pair.deployer.key_name
+  key_name      = aws_key_pair.deployer_key_pair.key_name
 
-  security_groups = [aws_security_group.backend_sg.id]
+  security_groups = [aws_security_group.backend_security_group.id]
 
   user_data = <<-EOF
                 #!/bin/bash
@@ -221,17 +229,23 @@ resource "aws_launch_configuration" "app" {
                 EOF
 }
 
-resource "aws_autoscaling_group" "app" {
-  launch_configuration = aws_launch_configuration.app.id
+resource "aws_autoscaling_group" "app_autoscaling_group" {
+  launch_configuration = aws_launch_configuration.app_launch_configuration.id
   min_size             = 1
   max_size             = 3
   desired_capacity     = 2
 
-  vpc_zone_identifier = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
+  vpc_zone_identifier = [aws_subnet.public_subnet_1a.id, aws_subnet.public_subnet_1b.id]
 
   tag {
     key                 = "Name"
-    value               = "terraform-asg-instance"
+    value               = "asg-instance"
     propagate_at_launch = true
+  }
+
+  wait_for_capacity_timeout = "15m"
+
+  lifecycle {
+    ignore_changes = [id]
   }
 }

@@ -85,6 +85,11 @@ deploy:
 build:
 	go build -o bin/app cmd/app/main.go
 
+# Up - runs the application
+.PHONY: up
+up:
+	./bin/app
+
 # Clean - removes temporary files/folders, clean up the database container and removes the binary
 .PHONY: clean
 clean: reset-dev reset-prod
