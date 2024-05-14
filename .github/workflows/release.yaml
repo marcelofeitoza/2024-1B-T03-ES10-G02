@@ -1,57 +1,56 @@
-name: Deploy Infrastructure
+name: Deploy Infrastructure and Application
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
 
 jobs:
-  terraform:
-    runs-on: ubuntu-latest
-    environment: production
+    terraform_deploy:
+        runs-on: ubuntu-latest
+        environment: production
 
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
+        steps:
+            - name: Checkout Repo
+              uses: actions/checkout@v2
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: "1.0.0"
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v1
+              with:
+                  terraform_version: "1.0.0"
+                  cli_config_credentials_token: ${{ secrets.TERRAFORM_CLOUD_TOKEN }}
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v1
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+                  aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Set SSH Key
-        run: |
-          echo "TF_VAR_public_key=${{ secrets.EC2_SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
-      - name: Check Terraform Variables
-        run: echo "Public Key = $TF_VAR_public_key"
+            - name: Terraform Init
+              working-directory: ./infra/terraform
+              run: terraform init
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: ./infra/terraform
+            - name: Execute Terraform Apply Script
+              working-directory: ./infra/terraform
+              run: chmod +x ./terraform_apply.sh && sh ./terraform_apply.sh
+              env:
+                DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+                PUBLIC_KEY: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
+                AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                AWS_DEFAULT_REGION: 'us-east-1'
 
-      - name: Terraform Plan
-        run: terraform plan -input=false -out=plan.tfout -var="db_password=${{ secrets.DB_PASSWORD }}"
-        working-directory: ./infra/terraform
-
-      - name: Terraform Apply
-        run: terraform apply -input=false -auto-approve plan.tfout
-        working-directory: ./infra/terraform
-
-      - name: Deploy Application
-        run: |
-          EC2_INSTANCE_IP=$(terraform output -raw backend_instance_1_id)
-          scp -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} setup.sh ubuntu@$EC2_INSTANCE_IP:/home/ubuntu/
-          ssh -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ubuntu@$EC2_INSTANCE_IP "chmod +x /home/ubuntu/setup.sh && /home/ubuntu/setup.sh"
-          scp -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} deploy.sh ubuntu@$EC2_INSTANCE_IP:/home/ubuntu/
-          ssh -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ubuntu@$EC2_INSTANCE_IP "chmod +x /home/ubuntu/deploy.sh && /home/ubuntu/deploy.sh"
+            - name: Deploy Application
+              run: |
+                  chmod 400 ./deployer-key-pair.pem
+                  EC2_INSTANCE_IP=$(terraform output -raw backend_instance_1_id)
+                  echo "Deploying to ${EC2_INSTANCE_IP}"
+                  ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ubuntu@${EC2_INSTANCE_IP} "chmod +x /home/ubuntu/setup.sh && /home/ubuntu/setup.sh"
+                  ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ubuntu@${EC2_INSTANCE_IP} "chmod +x /home/ubuntu/deploy.sh && /home/ubuntu/deploy.sh"
+              env:
+                  EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}

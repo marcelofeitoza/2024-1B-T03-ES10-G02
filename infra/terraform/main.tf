@@ -139,9 +139,11 @@ resource "aws_db_subnet_group" "main_subnet_group" {
   }
 
   lifecycle {
-    ignore_changes = [id]
+    create_before_destroy   = true
+    ignore_changes          = [subnet_ids]
   }
 }
+
 
 resource "aws_db_instance" "main_database" {
   allocated_storage      = 20
@@ -165,20 +167,34 @@ resource "aws_instance" "backend_instance_1" {
   ami           = var.ami
   instance_type = var.instance_type
   subnet_id     = aws_subnet.public_subnet_1a.id
+  key_name      = aws_key_pair.deployer_key_pair.key_name
+
   tags = {
     Name = "backend-instance-1"
   }
   vpc_security_group_ids = [aws_security_group.backend_security_group.id]
+  depends_on             = [aws_subnet.public_subnet_1a]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_instance" "backend_instance_2" {
   ami           = var.ami
   instance_type = var.instance_type
   subnet_id     = aws_subnet.public_subnet_1b.id
+  key_name      = "deployer-key-pair"
+
   tags = {
     Name = "backend-instance-2"
   }
   vpc_security_group_ids = [aws_security_group.backend_security_group.id]
+  depends_on             = [aws_subnet.public_subnet_1b]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_elb" "web_elb" {
@@ -207,12 +223,23 @@ resource "aws_elb" "web_elb" {
   }
 
   lifecycle {
-    ignore_changes = [id]
+    create_before_destroy = true
+    ignore_changes        = [availability_zones, instances, security_groups, subnets]
   }
 }
 
 resource "aws_key_pair" "deployer_key_pair" {
-  public_key = var.public_key
+  key_name   = "deployer-key-pair"
+  public_key = tls_private_key.pk.public_key_openssh
+
+  provisioner "local-exec" {
+    command = "rm -f ./deployer-key-pair.pem && echo '${tls_private_key.pk.private_key_pem}' > ./deployer-key-pair.pem && chmod 400 ./deployer-key-pair.pem"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+    prevent_destroy       = true
+  }
 }
 
 resource "aws_launch_configuration" "app_launch_configuration" {
@@ -246,6 +273,11 @@ resource "aws_autoscaling_group" "app_autoscaling_group" {
   wait_for_capacity_timeout = "15m"
 
   lifecycle {
-    ignore_changes = [id]
+    create_before_destroy = true
   }
+}
+
+resource "tls_private_key" "pk" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }

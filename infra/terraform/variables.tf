@@ -1,3 +1,9 @@
+variable "key_pair_name" {
+  description = "The name of the key pair"
+  type        = string
+  default     = "deployer-key-pair"
+}
+
 variable "public_key" {
   description = "The public key to use for SSH access"
   type        = string
