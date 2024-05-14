@@ -1,6 +1,11 @@
 variable "public_key" {
-    description = "The public key to use for SSH access"
-    type = string
+  description = "The public key to use for SSH access"
+  type        = string
+}
+
+variable "db_password" {
+  description = "The password for the RDS database"
+  type        = string
 }
 
 variable "region" {

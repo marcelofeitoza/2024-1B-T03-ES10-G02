@@ -10,16 +10,24 @@ output "subnet_id_2" {
   value = aws_subnet.public_subnet_2.id
 }
 
-output "instance_id" {
-  value = aws_instance.example.id
+output "backend_instance_1_id" {
+  value = aws_instance.backend_1.id
+}
+
+output "backend_instance_2_id" {
+  value = aws_instance.backend_2.id
 }
 
 output "elb_security_group_id" {
   value = aws_security_group.elb_sg.id
 }
 
-output "ec2_security_group_id" {
-  value = aws_security_group.ec2_sg.id
+output "backend_security_group_id" {
+  value = aws_security_group.backend_sg.id
+}
+
+output "db_security_group_id" {
+  value = aws_security_group.db_sg.id
 }
 
 output "web_elb_dns_name" {
@@ -28,4 +36,8 @@ output "web_elb_dns_name" {
 
 output "autoscaling_group_name" {
   value = aws_autoscaling_group.app.name
+}
+
+output "db_instance_address" {
+  value = aws_db_instance.database.address
 }
