@@ -36,8 +36,20 @@ jobs:
               run: terraform init
 
             - name: Execute Terraform Apply Script
+              id: terraform_apply
               working-directory: ./infra/terraform
               run: chmod +x ./terraform_apply.sh && sh ./terraform_apply.sh
+              env:
+                DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+                PUBLIC_KEY: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
+                AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                AWS_DEFAULT_REGION: 'us-east-1'
+
+            - name: Terraform Destroy
+              if: ${{ failure() }}
+              working-directory: ./infra/terraform
+              run: terraform destroy -auto-approve
               env:
                 DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
                 PUBLIC_KEY: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
