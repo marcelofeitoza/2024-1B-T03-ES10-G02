@@ -43,5 +43,5 @@ if echo "$plan_output" | grep -q 'No changes'; then
     echo "Nenhuma mudança necessária."
 else
     echo "Aplicando mudanças..."
-    terraform apply -var="db_password=${DB_PASSWORD}" -var="public_key=${PUBLIC_KEY} -auto-approve"
+    terraform apply -auto-approve -var="db_password=${DB_PASSWORD}" -var="public_key=${PUBLIC_KEY}"
 fi
