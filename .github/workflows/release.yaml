@@ -49,7 +49,7 @@ jobs:
             - name: Terraform Destroy
               if: ${{ failure() }}
               working-directory: ./infra/terraform
-              run: terraform destroy -auto-approve
+              run: terraform destroy -auto-approve -var "db_password=${DB_PASSWORD}" -var "public_key=${PUBLIC_KEY}"
               env:
                 DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
                 PUBLIC_KEY: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
